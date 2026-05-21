@@ -29,3 +29,21 @@ export function buildAuthorOptions(
 
   return shuffle([correctAuthor, ...wrongAuthors]);
 }
+
+export function formatArtLabel(art: Art): string {
+  return `${art.author}, «${art.title}»`;
+}
+
+function artKey(art: Art): string {
+  return `${art.author}\0${art.title}`;
+}
+
+export function buildArtLabelOptions(correctArt: Art, pool: Art[]): string[] {
+  const correct = artKey(correctArt);
+  const wrongArts = shuffle(pool.filter((art) => artKey(art) !== correct)).slice(
+    0,
+    2,
+  );
+
+  return shuffle([formatArtLabel(correctArt), ...wrongArts.map(formatArtLabel)]);
+}

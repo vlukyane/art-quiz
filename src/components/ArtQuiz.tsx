@@ -5,77 +5,133 @@ import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
 import {
   QUESTION_COUNT,
+  buildArtLabelOptions,
   buildAuthorOptions,
+  formatArtLabel,
   getUniqueAuthors,
   pickGameArts,
 } from "@/lib/quiz";
 
 type GamePhase = "start" | "playing" | "finished";
+type QuizMode = "author" | "title";
+
+const MODES: Record<
+  QuizMode,
+  { title: string; description: string; questionLabel: string }
+> = {
+  author: {
+    title: "Угадай художника",
+    description:
+      "Показывается картина — выберите автора из трёх вариантов. 30 случайных картин без повторов за игру.",
+    questionLabel: "Кто автор этой картины?",
+  },
+  title: {
+    title: "Угадай картину по описанию",
+    description:
+      "Показывается описание картины — выберите название и автора из трёх вариантов. 30 вопросов без повторов.",
+    questionLabel: "Как называется эта картина?",
+  },
+};
 
 export function ArtQuiz() {
   const allAuthors = useMemo(() => getUniqueAuthors(ARTS), []);
 
   const [phase, setPhase] = useState<GamePhase>("start");
+  const [mode, setMode] = useState<QuizMode | null>(null);
   const [gameArts, setGameArts] = useState<typeof ARTS>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
-  const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
 
   const currentArt = gameArts[questionIndex];
-  const correctAuthor = currentArt?.author ?? "";
+  const correctAnswer =
+    mode === "author"
+      ? (currentArt?.author ?? "")
+      : currentArt
+        ? formatArtLabel(currentArt)
+        : "";
 
-  const startGame = useCallback(() => {
-    const arts = pickGameArts(ARTS, QUESTION_COUNT);
-    setGameArts(arts);
-    setQuestionIndex(0);
-    setSelectedAuthor(null);
-    setIsAnswered(false);
-    setOptions(buildAuthorOptions(arts[0].author, allAuthors));
-    setPhase("playing");
-  }, [allAuthors]);
-
-  const goToQuestion = useCallback(
-    (index: number, arts: typeof ARTS) => {
-      setQuestionIndex(index);
-      setSelectedAuthor(null);
-      setIsAnswered(false);
-      setOptions(buildAuthorOptions(arts[index].author, allAuthors));
+  const buildOptionsForArt = useCallback(
+    (art: (typeof ARTS)[number], quizMode: QuizMode) => {
+      if (quizMode === "author") {
+        return buildAuthorOptions(art.author, allAuthors);
+      }
+      return buildArtLabelOptions(art, ARTS);
     },
     [allAuthors],
   );
 
+  const startGame = useCallback(
+    (quizMode: QuizMode) => {
+      const arts = pickGameArts(ARTS, QUESTION_COUNT);
+      setMode(quizMode);
+      setGameArts(arts);
+      setQuestionIndex(0);
+      setSelectedAnswer(null);
+      setIsAnswered(false);
+      setOptions(buildOptionsForArt(arts[0], quizMode));
+      setPhase("playing");
+    },
+    [buildOptionsForArt],
+  );
+
+  const restartGame = useCallback(() => {
+    if (mode) startGame(mode);
+  }, [mode, startGame]);
+
+  const goToStart = () => {
+    setPhase("start");
+    setMode(null);
+    setGameArts([]);
+    setQuestionIndex(0);
+    setSelectedAnswer(null);
+    setIsAnswered(false);
+    setOptions([]);
+  };
+
+  const goToQuestion = useCallback(
+    (index: number, arts: typeof ARTS, quizMode: QuizMode) => {
+      setQuestionIndex(index);
+      setSelectedAnswer(null);
+      setIsAnswered(false);
+      setOptions(buildOptionsForArt(arts[index], quizMode));
+    },
+    [buildOptionsForArt],
+  );
+
   const handleAnswer = () => {
-    if (!selectedAuthor || isAnswered) return;
+    if (!selectedAnswer || isAnswered) return;
     setIsAnswered(true);
   };
 
   const handleNext = () => {
+    if (!mode) return;
     const nextIndex = questionIndex + 1;
     if (nextIndex >= gameArts.length) {
       setPhase("finished");
       return;
     }
-    goToQuestion(nextIndex, gameArts);
+    goToQuestion(nextIndex, gameArts, mode);
   };
 
-  const getOptionClass = (author: string) => {
+  const getOptionClass = (option: string) => {
     const base =
       "flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition-colors";
 
     if (!isAnswered) {
       return `${base} ${
-        selectedAuthor === author
+        selectedAnswer === option
           ? "border-amber-600 bg-amber-50"
           : "border-stone-200 bg-white hover:border-stone-300"
       }`;
     }
 
-    if (author === correctAuthor) {
+    if (option === correctAnswer) {
       return `${base} border-green-600 bg-green-50`;
     }
 
-    if (author === selectedAuthor) {
+    if (option === selectedAnswer) {
       return `${base} border-red-600 bg-red-50`;
     }
 
@@ -84,61 +140,83 @@ export function ArtQuiz() {
 
   if (phase === "start") {
     return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-4">
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-4 py-12">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-stone-900">Квиз: угадай художника</h1>
-          <p className="mt-3 max-w-md text-stone-600">
-            30 случайных картин из 100 знаменитых произведений. Выберите автора
-            картины — каждая картина встречается только один раз за игру.
+          <h1 className="text-3xl font-bold text-stone-900">Квиз: знаменитые картины</h1>
+          <p className="mt-3 max-w-lg text-stone-600">
+            Выберите режим игры — 30 случайных вопросов из 100 шедевров.
+          </p>
+        </div>
+        <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+          {(Object.keys(MODES) as QuizMode[]).map((quizMode) => (
+            <button
+              key={quizMode}
+              type="button"
+              onClick={() => startGame(quizMode)}
+              className="flex flex-col rounded-2xl border-2 border-stone-200 bg-white p-6 text-left transition hover:border-amber-600 hover:shadow-md"
+            >
+              <span className="text-lg font-semibold text-stone-900">
+                {MODES[quizMode].title}
+              </span>
+              <span className="mt-2 text-sm leading-relaxed text-stone-600">
+                {MODES[quizMode].description}
+              </span>
+              <span className="mt-4 text-sm font-medium text-amber-800">
+                Начать →
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "finished" && mode) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-stone-900">Игра завершена!</h2>
+          <p className="mt-2 text-stone-600">
+            Режим «{MODES[mode].title}» — все {QUESTION_COUNT} вопросов пройдены.
           </p>
         </div>
         <button
           type="button"
-          onClick={startGame}
+          onClick={restartGame}
           className="rounded-full bg-stone-900 px-10 py-4 text-lg font-medium text-white transition hover:bg-stone-700"
         >
-          Начать игру
+          Начать новую игру
+        </button>
+        <button
+          type="button"
+          onClick={goToStart}
+          className="text-sm text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
+        >
+          Выбрать другой режим
         </button>
       </div>
     );
   }
 
-  if (phase === "finished") {
-    return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-stone-900">Игра завершена!</h2>
-          <p className="mt-2 text-stone-600">
-            Вы прошли все {QUESTION_COUNT} вопросов.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={startGame}
-          className="rounded-full bg-stone-900 px-10 py-4 text-lg font-medium text-white transition hover:bg-stone-700"
-        >
-          Начать новую игру
-        </button>
-      </div>
-    );
-  }
+  if (!mode || !currentArt) return null;
 
   return (
     <div className="relative mx-auto w-full max-w-3xl px-4 py-8">
       <button
         type="button"
-        onClick={startGame}
+        onClick={restartGame}
         className="absolute right-4 top-4 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition hover:bg-stone-100"
         title="Начать игру заново"
       >
         ↻ Рестарт
       </button>
 
+      <p className="mb-2 text-center text-xs text-stone-400">{MODES[mode].title}</p>
       <p className="mb-6 text-center text-sm text-stone-500">
         Вопрос {questionIndex + 1} из {QUESTION_COUNT}
       </p>
 
-      {currentArt && (
+      {mode === "author" ? (
         <div className="mb-6 overflow-hidden rounded-xl bg-stone-100 shadow-md">
           <div className="relative mx-auto aspect-[4/3] max-h-[420px] w-full">
             <Image
@@ -151,24 +229,30 @@ export function ArtQuiz() {
             />
           </div>
         </div>
+      ) : (
+        <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-base leading-relaxed text-stone-700">
+            {currentArt.description}
+          </p>
+        </div>
       )}
 
       <fieldset className="space-y-3" disabled={isAnswered}>
         <legend className="mb-4 text-lg font-semibold text-stone-800">
-          Кто автор этой картины?
+          {MODES[mode].questionLabel}
         </legend>
-        {options.map((author) => (
-          <label key={author} className={getOptionClass(author)}>
+        {options.map((option) => (
+          <label key={option} className={getOptionClass(option)}>
             <input
               type="radio"
-              name="author"
-              value={author}
-              checked={selectedAuthor === author}
-              onChange={() => setSelectedAuthor(author)}
+              name="answer"
+              value={option}
+              checked={selectedAnswer === option}
+              onChange={() => setSelectedAnswer(option)}
               disabled={isAnswered}
-              className="h-4 w-4 accent-amber-700"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-amber-700"
             />
-            <span className="text-stone-800">{author}</span>
+            <span className="text-stone-800">{option}</span>
           </label>
         ))}
       </fieldset>
@@ -178,7 +262,7 @@ export function ArtQuiz() {
           <button
             type="button"
             onClick={handleAnswer}
-            disabled={!selectedAuthor}
+            disabled={!selectedAnswer}
             className="rounded-full bg-amber-700 px-8 py-3 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Ответить
