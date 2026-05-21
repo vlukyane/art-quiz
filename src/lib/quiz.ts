@@ -15,6 +15,10 @@ export function pickGameArts(arts: Art[], count: number): Art[] {
   return shuffle(arts).slice(0, count);
 }
 
+export function pickGameAuthors(authors: string[], count: number): string[] {
+  return shuffle(authors).slice(0, count);
+}
+
 export function getUniqueAuthors(arts: Art[]): string[] {
   return [...new Set(arts.map((art) => art.author))];
 }

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
+import { getAuthorBio, getAuthorsWithBio } from "@/data/author-bios";
 import {
   QUESTION_COUNT,
   buildArtLabelOptions,
@@ -10,10 +11,11 @@ import {
   formatArtLabel,
   getUniqueAuthors,
   pickGameArts,
+  pickGameAuthors,
 } from "@/lib/quiz";
 
 type GamePhase = "start" | "playing" | "finished";
-type QuizMode = "author" | "title";
+type QuizMode = "author" | "title" | "bio";
 
 const MODES: Record<
   QuizMode,
@@ -31,26 +33,62 @@ const MODES: Record<
       "Показывается описание картины — выберите название и автора из трёх вариантов. 30 вопросов без повторов.",
     questionLabel: "Как называется эта картина?",
   },
+  bio: {
+    title: "Угадай художника по биографии",
+    description:
+      "Показывается биография — угадайте автора из трёх вариантов. 30 художников без повторов за игру.",
+    questionLabel: "Кто этот художник?",
+  },
 };
+
+function BioContent({ text }: { text: string }) {
+  const paragraphs = text.split("\n\n").filter(Boolean);
+  return (
+    <div className="space-y-3">
+      {paragraphs.map((paragraph, index) => (
+        <p
+          key={index}
+          className={
+            paragraph.startsWith("Страна:") ||
+            paragraph.startsWith("Город рождения:") ||
+            paragraph.startsWith("Годы жизни:")
+              ? "text-sm font-medium text-stone-600"
+              : "text-base leading-relaxed text-stone-700"
+          }
+        >
+          {paragraph}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 export function ArtQuiz() {
   const allAuthors = useMemo(() => getUniqueAuthors(ARTS), []);
+  const authorsWithBio = useMemo(() => getAuthorsWithBio(), []);
 
   const [phase, setPhase] = useState<GamePhase>("start");
   const [mode, setMode] = useState<QuizMode | null>(null);
   const [gameArts, setGameArts] = useState<typeof ARTS>([]);
+  const [gameAuthors, setGameAuthors] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
 
   const currentArt = gameArts[questionIndex];
+  const currentAuthor = gameAuthors[questionIndex];
+  const currentBio =
+    mode === "bio" && currentAuthor ? getAuthorBio(currentAuthor) : null;
+
   const correctAnswer =
-    mode === "author"
-      ? (currentArt?.author ?? "")
-      : currentArt
-        ? formatArtLabel(currentArt)
-        : "";
+    mode === "bio"
+      ? (currentAuthor ?? "")
+      : mode === "author"
+        ? (currentArt?.author ?? "")
+        : currentArt
+          ? formatArtLabel(currentArt)
+          : "";
 
   const buildOptionsForArt = useCallback(
     (art: (typeof ARTS)[number], quizMode: QuizMode) => {
@@ -64,16 +102,26 @@ export function ArtQuiz() {
 
   const startGame = useCallback(
     (quizMode: QuizMode) => {
-      const arts = pickGameArts(ARTS, QUESTION_COUNT);
       setMode(quizMode);
-      setGameArts(arts);
       setQuestionIndex(0);
       setSelectedAnswer(null);
       setIsAnswered(false);
-      setOptions(buildOptionsForArt(arts[0], quizMode));
+
+      if (quizMode === "bio") {
+        const authors = pickGameAuthors(authorsWithBio, QUESTION_COUNT);
+        setGameAuthors(authors);
+        setGameArts([]);
+        setOptions(buildAuthorOptions(authors[0], authorsWithBio));
+      } else {
+        const arts = pickGameArts(ARTS, QUESTION_COUNT);
+        setGameArts(arts);
+        setGameAuthors([]);
+        setOptions(buildOptionsForArt(arts[0], quizMode));
+      }
+
       setPhase("playing");
     },
-    [buildOptionsForArt],
+    [authorsWithBio, buildOptionsForArt],
   );
 
   const restartGame = useCallback(() => {
@@ -84,6 +132,7 @@ export function ArtQuiz() {
     setPhase("start");
     setMode(null);
     setGameArts([]);
+    setGameAuthors([]);
     setQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -91,13 +140,18 @@ export function ArtQuiz() {
   };
 
   const goToQuestion = useCallback(
-    (index: number, arts: typeof ARTS, quizMode: QuizMode) => {
+    (index: number, quizMode: QuizMode) => {
       setQuestionIndex(index);
       setSelectedAnswer(null);
       setIsAnswered(false);
-      setOptions(buildOptionsForArt(arts[index], quizMode));
+
+      if (quizMode === "bio") {
+        setOptions(buildAuthorOptions(gameAuthors[index], authorsWithBio));
+      } else {
+        setOptions(buildOptionsForArt(gameArts[index], quizMode));
+      }
     },
-    [buildOptionsForArt],
+    [authorsWithBio, buildOptionsForArt, gameArts, gameAuthors],
   );
 
   const handleAnswer = () => {
@@ -108,11 +162,11 @@ export function ArtQuiz() {
   const handleNext = () => {
     if (!mode) return;
     const nextIndex = questionIndex + 1;
-    if (nextIndex >= gameArts.length) {
+    if (nextIndex >= QUESTION_COUNT) {
       setPhase("finished");
       return;
     }
-    goToQuestion(nextIndex, gameArts, mode);
+    goToQuestion(nextIndex, mode);
   };
 
   const getOptionClass = (option: string) => {
@@ -138,6 +192,9 @@ export function ArtQuiz() {
     return `${base} border-stone-200 bg-white opacity-60`;
   };
 
+  const isPlayingReady =
+    mode === "bio" ? currentAuthor && currentBio : currentArt;
+
   if (phase === "start") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 px-4 py-12">
@@ -147,7 +204,7 @@ export function ArtQuiz() {
             Выберите режим игры — 30 случайных вопросов из 100 шедевров.
           </p>
         </div>
-        <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(Object.keys(MODES) as QuizMode[]).map((quizMode) => (
             <button
               key={quizMode}
@@ -198,25 +255,35 @@ export function ArtQuiz() {
     );
   }
 
-  if (!mode || !currentArt) return null;
+  if (!mode || !isPlayingReady) return null;
 
   return (
     <div className="relative mx-auto w-full max-w-3xl px-4 py-8">
-      <button
-        type="button"
-        onClick={restartGame}
-        className="absolute right-4 top-4 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition hover:bg-stone-100"
-        title="Начать игру заново"
-      >
-        ↻ Рестарт
-      </button>
+      <div className="absolute right-4 top-4 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={goToStart}
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition hover:bg-stone-100"
+          title="Вернуться в главное меню"
+        >
+          В меню
+        </button>
+        <button
+          type="button"
+          onClick={restartGame}
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition hover:bg-stone-100"
+          title="Начать игру заново"
+        >
+          ↻ Рестарт
+        </button>
+      </div>
 
       <p className="mb-2 text-center text-xs text-stone-400">{MODES[mode].title}</p>
       <p className="mb-6 text-center text-sm text-stone-500">
         Вопрос {questionIndex + 1} из {QUESTION_COUNT}
       </p>
 
-      {mode === "author" ? (
+      {mode === "author" && currentArt && (
         <div className="mb-6 overflow-hidden rounded-xl bg-stone-100 shadow-md">
           <div className="relative mx-auto aspect-[4/3] max-h-[420px] w-full">
             <Image
@@ -229,11 +296,19 @@ export function ArtQuiz() {
             />
           </div>
         </div>
-      ) : (
+      )}
+
+      {mode === "title" && currentArt && (
         <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
           <p className="text-base leading-relaxed text-stone-700">
             {currentArt.description}
           </p>
+        </div>
+      )}
+
+      {mode === "bio" && currentBio && (
+        <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <BioContent text={currentBio} />
         </div>
       )}
 

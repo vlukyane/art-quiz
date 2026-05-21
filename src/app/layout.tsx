@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Квиз: знаменитые картины",
   description:
-    "Угадай художника по картине или название по описанию — 30 вопросов из 100 шедевров",
+    "Угадай художника по картине, биографии или название картины по описанию — 30 вопросов",
 };
 
 export default function RootLayout({
