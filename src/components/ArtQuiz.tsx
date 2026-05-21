@@ -19,7 +19,12 @@ type QuizMode = "author" | "title" | "bio";
 
 const MODES: Record<
   QuizMode,
-  { title: string; description: string; questionLabel: string }
+  {
+    title: string;
+    description: string;
+    questionLabel: string;
+    inDevelopment?: boolean;
+  }
 > = {
   author: {
     title: "Угадай художника",
@@ -32,6 +37,7 @@ const MODES: Record<
     description:
       "Показывается описание картины — выберите название и автора из трёх вариантов. 30 вопросов без повторов.",
     questionLabel: "Как называется эта картина?",
+    inDevelopment: true,
   },
   bio: {
     title: "Угадай художника по биографии",
@@ -215,6 +221,11 @@ export function ArtQuiz() {
               <span className="text-lg font-semibold text-stone-900">
                 {MODES[quizMode].title}
               </span>
+              {MODES[quizMode].inDevelopment && (
+                <span className="mt-2 inline-block w-fit rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  Режим в разработке
+                </span>
+              )}
               <span className="mt-2 text-sm leading-relaxed text-stone-600">
                 {MODES[quizMode].description}
               </span>
@@ -279,6 +290,11 @@ export function ArtQuiz() {
       </div>
 
       <p className="mb-2 text-center text-xs text-stone-400">{MODES[mode].title}</p>
+      {MODES[mode].inDevelopment && (
+        <p className="mb-2 text-center text-sm font-medium text-amber-700">
+          Режим в разработке
+        </p>
+      )}
       <p className="mb-6 text-center text-sm text-stone-500">
         Вопрос {questionIndex + 1} из {QUESTION_COUNT}
       </p>
