@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
 import { getAuthorBio, getAuthorsWithBio } from "@/data/author-bios";
 import { GameFinishedScreen } from "@/components/GameFinishedScreen";
+import { MODE_CONFIG, QUIZ_MODE_LIST, type QuizMode } from "@/lib/modes";
 import {
   QUESTION_COUNT,
   buildArtLabelOptions,
@@ -16,37 +18,6 @@ import {
 } from "@/lib/quiz";
 
 type GamePhase = "start" | "playing" | "finished";
-type QuizMode = "author" | "title" | "bio";
-
-const MODES: Record<
-  QuizMode,
-  {
-    title: string;
-    description: string;
-    questionLabel: string;
-    inDevelopment?: boolean;
-  }
-> = {
-  author: {
-    title: "Угадай художника",
-    description:
-      "Показывается картина — выберите автора из трёх вариантов. 30 случайных картин без повторов за игру.",
-    questionLabel: "Кто автор этой картины?",
-  },
-  title: {
-    title: "Угадай картину по описанию",
-    description:
-      "Показывается описание картины — выберите название и автора из трёх вариантов. 30 вопросов без повторов.",
-    questionLabel: "Как называется эта картина?",
-    inDevelopment: true,
-  },
-  bio: {
-    title: "Угадай художника по биографии",
-    description:
-      "Показывается биография — угадайте автора из трёх вариантов. 30 художников без повторов за игру.",
-    questionLabel: "Кто этот художник?",
-  },
-};
 
 function BioContent({ text }: { text: string }) {
   const paragraphs = text.split("\n\n").filter(Boolean);
@@ -218,7 +189,7 @@ export function ArtQuiz() {
           </p>
         </div>
         <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(Object.keys(MODES) as QuizMode[]).map((quizMode) => (
+          {QUIZ_MODE_LIST.map((quizMode) => (
             <button
               key={quizMode}
               type="button"
@@ -226,15 +197,15 @@ export function ArtQuiz() {
               className="flex flex-col rounded-2xl border-2 border-stone-200 bg-white p-6 text-left transition hover:border-amber-600 hover:shadow-md"
             >
               <span className="text-lg font-semibold text-stone-900">
-                {MODES[quizMode].title}
+                {MODE_CONFIG[quizMode].title}
               </span>
-              {MODES[quizMode].inDevelopment && (
+              {MODE_CONFIG[quizMode].inDevelopment && (
                 <span className="mt-2 inline-block w-fit rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                   Режим в разработке
                 </span>
               )}
               <span className="mt-2 text-sm leading-relaxed text-stone-600">
-                {MODES[quizMode].description}
+                {MODE_CONFIG[quizMode].description}
               </span>
               <span className="mt-4 text-sm font-medium text-amber-800">
                 Начать →
@@ -242,6 +213,12 @@ export function ArtQuiz() {
             </button>
           ))}
         </div>
+        <Link
+          href="/leaderboard"
+          className="rounded-full border border-stone-300 bg-white px-8 py-3 text-sm font-medium text-stone-700 transition hover:border-amber-600 hover:text-amber-900"
+        >
+          Таблица результатов
+        </Link>
       </div>
     );
   }
@@ -250,7 +227,7 @@ export function ArtQuiz() {
     return (
       <GameFinishedScreen
         mode={mode}
-        modeTitle={MODES[mode].title}
+        modeTitle={MODE_CONFIG[mode].title}
         correctCount={correctCount}
         onRestart={restartGame}
         onGoToMenu={goToStart}
@@ -281,8 +258,8 @@ export function ArtQuiz() {
         </button>
       </div>
 
-      <p className="mb-2 text-center text-xs text-stone-400">{MODES[mode].title}</p>
-      {MODES[mode].inDevelopment && (
+      <p className="mb-2 text-center text-xs text-stone-400">{MODE_CONFIG[mode].title}</p>
+      {MODE_CONFIG[mode].inDevelopment && (
         <p className="mb-2 text-center text-sm font-medium text-amber-700">
           Режим в разработке
         </p>
@@ -325,7 +302,7 @@ export function ArtQuiz() {
 
       <fieldset className="space-y-3" disabled={isAnswered}>
         <legend className="mb-4 text-lg font-semibold text-stone-800">
-          {MODES[mode].questionLabel}
+          {MODE_CONFIG[mode].questionLabel}
         </legend>
         {options.map((option) => (
           <label key={option} className={getOptionClass(option)}>
