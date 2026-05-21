@@ -81,6 +81,7 @@ export function ArtQuiz() {
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
 
   const currentArt = gameArts[questionIndex];
   const currentAuthor = gameAuthors[questionIndex];
@@ -112,6 +113,7 @@ export function ArtQuiz() {
       setQuestionIndex(0);
       setSelectedAnswer(null);
       setIsAnswered(false);
+      setCorrectCount(0);
 
       if (quizMode === "bio") {
         const authors = pickGameAuthors(authorsWithBio, QUESTION_COUNT);
@@ -142,6 +144,7 @@ export function ArtQuiz() {
     setQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
+    setCorrectCount(0);
     setOptions([]);
   };
 
@@ -162,6 +165,9 @@ export function ArtQuiz() {
 
   const handleAnswer = () => {
     if (!selectedAnswer || isAnswered) return;
+    if (selectedAnswer === correctAnswer) {
+      setCorrectCount((count) => count + 1);
+    }
     setIsAnswered(true);
   };
 
@@ -247,6 +253,13 @@ export function ArtQuiz() {
           <p className="mt-2 text-stone-600">
             Режим «{MODES[mode].title}» — все {QUESTION_COUNT} вопросов пройдены.
           </p>
+          <p className="mt-6 text-4xl font-bold text-stone-900">
+            {correctCount} из {QUESTION_COUNT}
+          </p>
+          <p className="mt-2 text-lg text-stone-600">правильных ответов</p>
+          <p className="mt-1 text-sm text-stone-500">
+            {Math.round((correctCount / QUESTION_COUNT) * 100)}%
+          </p>
         </div>
         <button
           type="button"
@@ -295,6 +308,9 @@ export function ArtQuiz() {
           Режим в разработке
         </p>
       )}
+      <p className="absolute left-4 top-4 text-sm font-medium text-stone-600">
+        Верно: {correctCount}
+      </p>
       <p className="mb-6 text-center text-sm text-stone-500">
         Вопрос {questionIndex + 1} из {QUESTION_COUNT}
       </p>
