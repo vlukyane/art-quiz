@@ -5,10 +5,20 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
+function getMongoUri(): string | undefined {
+  return (
+    process.env.MONGO_STORAGE_MONGODB_URI ?? process.env.MONGODB_URI
+  );
+}
+
 export function getMongoClient(): Promise<MongoClient> {
-  const uri = process.env.MONGODB_URI;
+  const uri = getMongoUri();
   if (!uri) {
-    return Promise.reject(new Error("MONGODB_URI is not set"));
+    return Promise.reject(
+      new Error(
+        "MONGO_STORAGE_MONGODB_URI or MONGODB_URI is not set",
+      ),
+    );
   }
 
   if (process.env.NODE_ENV === "development") {
