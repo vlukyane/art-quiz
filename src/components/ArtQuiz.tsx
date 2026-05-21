@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
 import { getAuthorBio, getAuthorsWithBio } from "@/data/author-bios";
+import { GameFinishedScreen } from "@/components/GameFinishedScreen";
 import {
   QUESTION_COUNT,
   buildArtLabelOptions,
@@ -247,35 +248,13 @@ export function ArtQuiz() {
 
   if (phase === "finished" && mode) {
     return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-stone-900">Игра завершена!</h2>
-          <p className="mt-2 text-stone-600">
-            Режим «{MODES[mode].title}» — все {QUESTION_COUNT} вопросов пройдены.
-          </p>
-          <p className="mt-6 text-4xl font-bold text-stone-900">
-            {correctCount} из {QUESTION_COUNT}
-          </p>
-          <p className="mt-2 text-lg text-stone-600">правильных ответов</p>
-          <p className="mt-1 text-sm text-stone-500">
-            {Math.round((correctCount / QUESTION_COUNT) * 100)}%
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={restartGame}
-          className="rounded-full bg-stone-900 px-10 py-4 text-lg font-medium text-white transition hover:bg-stone-700"
-        >
-          Начать новую игру
-        </button>
-        <button
-          type="button"
-          onClick={goToStart}
-          className="text-sm text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
-        >
-          Выбрать другой режим
-        </button>
-      </div>
+      <GameFinishedScreen
+        mode={mode}
+        modeTitle={MODES[mode].title}
+        correctCount={correctCount}
+        onRestart={restartGame}
+        onGoToMenu={goToStart}
+      />
     );
   }
 
