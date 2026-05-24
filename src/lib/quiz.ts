@@ -1,4 +1,5 @@
 import type { Art } from "@/data/arts";
+import type { CountryFlag } from "@/data/country-flags";
 import type { Phraseologism } from "@/data/phraseologisms";
 
 export const QUESTION_COUNT = 30;
@@ -48,6 +49,21 @@ export function pickGamePhraseologisms(
   count: number,
 ): Phraseologism[] {
   return shuffle(items).slice(0, count);
+}
+
+export function pickGameFlags(items: CountryFlag[], count: number): CountryFlag[] {
+  return shuffle(items).slice(0, count);
+}
+
+export function buildCountryOptions(
+  correctCountry: string,
+  allCountries: string[],
+): string[] {
+  const wrongCountries = shuffle(
+    allCountries.filter((country) => country !== correctCountry),
+  ).slice(0, 2);
+
+  return shuffle([correctCountry, ...wrongCountries]);
 }
 
 export function buildPhraseologismOptions(

@@ -7,6 +7,7 @@ export const QUIZ_MODE_LIST: QuizMode[] = [
   "title",
   "bio",
   "phraseologism",
+  "flags",
 ];
 
 export const MODE_CONFIG: Record<
@@ -42,5 +43,11 @@ export const MODE_CONFIG: Record<
     description:
       "Показывается значение выражения — выберите фразеологизм из трёх вариантов. 30 вопросов без повторов.",
     questionLabel: "Какое это выражение?",
+  },
+  flags: {
+    title: "Угадай страну по флагу",
+    description:
+      "Показывается флаг — выберите страну из трёх вариантов. 30 случайных флагов без повторов за игру.",
+    questionLabel: "Какая это страна?",
   },
 };

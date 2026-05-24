@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         hostname: "atomnaya-romantika.ru",
         pathname: "/wp-content/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+        pathname: "/wikipedia/commons/**",
+      },
     ],
   },
 };

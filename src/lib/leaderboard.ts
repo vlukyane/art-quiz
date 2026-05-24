@@ -1,6 +1,11 @@
 import type { ObjectId } from "mongodb";
 
-export type QuizMode = "author" | "title" | "bio" | "phraseologism";
+export type QuizMode =
+  | "author"
+  | "title"
+  | "bio"
+  | "phraseologism"
+  | "flags";
 
 export const LEADERBOARD_SIZE = 20;
 

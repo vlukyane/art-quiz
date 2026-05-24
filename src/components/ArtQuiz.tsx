@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
 import { getAuthorBio, getAuthorsWithBio } from "@/data/author-bios";
+import { COUNTRY_FLAGS, type CountryFlag } from "@/data/country-flags";
 import { PHRASEOLOGISMS, type Phraseologism } from "@/data/phraseologisms";
 import { GameFinishedScreen } from "@/components/GameFinishedScreen";
 import { MODE_CONFIG, QUIZ_MODE_LIST, type QuizMode } from "@/lib/modes";
@@ -13,11 +14,13 @@ import {
   QUESTION_COUNT,
   buildArtLabelOptions,
   buildAuthorOptions,
+  buildCountryOptions,
   buildPhraseologismOptions,
   formatArtLabel,
   getUniqueAuthors,
   pickGameArts,
   pickGameAuthors,
+  pickGameFlags,
   pickGamePhraseologisms,
 } from "@/lib/quiz";
 
@@ -52,6 +55,10 @@ export function ArtQuiz() {
     () => PHRASEOLOGISMS.map((item) => item.phrase),
     [],
   );
+  const allCountries = useMemo(
+    () => COUNTRY_FLAGS.map((item) => item.country),
+    [],
+  );
 
   const [phase, setPhase] = useState<GamePhase>("start");
   const [mode, setMode] = useState<QuizMode | null>(null);
@@ -60,6 +67,7 @@ export function ArtQuiz() {
   const [gamePhraseologisms, setGamePhraseologisms] = useState<Phraseologism[]>(
     [],
   );
+  const [gameFlags, setGameFlags] = useState<CountryFlag[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -69,6 +77,7 @@ export function ArtQuiz() {
   const currentArt = gameArts[questionIndex];
   const currentAuthor = gameAuthors[questionIndex];
   const currentPhraseologism = gamePhraseologisms[questionIndex];
+  const currentFlag = gameFlags[questionIndex];
   const currentBio =
     mode === "bio" && currentAuthor ? getAuthorBio(currentAuthor) : null;
 
@@ -77,11 +86,13 @@ export function ArtQuiz() {
       ? (currentAuthor ?? "")
       : mode === "phraseologism"
         ? (currentPhraseologism?.phrase ?? "")
-        : mode === "author"
-          ? (currentArt?.author ?? "")
-          : currentArt
-            ? formatArtLabel(currentArt)
-            : "";
+        : mode === "flags"
+          ? (currentFlag?.country ?? "")
+          : mode === "author"
+            ? (currentArt?.author ?? "")
+            : currentArt
+              ? formatArtLabel(currentArt)
+              : "";
 
   const buildOptionsForArt = useCallback(
     (art: (typeof ARTS)[number], quizMode: QuizMode) => {
@@ -106,24 +117,34 @@ export function ArtQuiz() {
         setGameAuthors(authors);
         setGameArts([]);
         setGamePhraseologisms([]);
+        setGameFlags([]);
         setOptions(buildAuthorOptions(authors[0], authorsWithBio));
       } else if (quizMode === "phraseologism") {
         const items = pickGamePhraseologisms(PHRASEOLOGISMS, QUESTION_COUNT);
         setGamePhraseologisms(items);
         setGameArts([]);
         setGameAuthors([]);
+        setGameFlags([]);
         setOptions(buildPhraseologismOptions(items[0].phrase, allPhrases));
+      } else if (quizMode === "flags") {
+        const items = pickGameFlags(COUNTRY_FLAGS, QUESTION_COUNT);
+        setGameFlags(items);
+        setGameArts([]);
+        setGameAuthors([]);
+        setGamePhraseologisms([]);
+        setOptions(buildCountryOptions(items[0].country, allCountries));
       } else {
         const arts = pickGameArts(ARTS, QUESTION_COUNT);
         setGameArts(arts);
         setGameAuthors([]);
         setGamePhraseologisms([]);
+        setGameFlags([]);
         setOptions(buildOptionsForArt(arts[0], quizMode));
       }
 
       setPhase("playing");
     },
-    [allPhrases, authorsWithBio, buildOptionsForArt],
+    [allCountries, allPhrases, authorsWithBio, buildOptionsForArt],
   );
 
   const restartGame = useCallback(() => {
@@ -136,6 +157,7 @@ export function ArtQuiz() {
     setGameArts([]);
     setGameAuthors([]);
     setGamePhraseologisms([]);
+    setGameFlags([]);
     setQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -158,16 +180,22 @@ export function ArtQuiz() {
             allPhrases,
           ),
         );
+      } else if (quizMode === "flags") {
+        setOptions(
+          buildCountryOptions(gameFlags[index].country, allCountries),
+        );
       } else {
         setOptions(buildOptionsForArt(gameArts[index], quizMode));
       }
     },
     [
+      allCountries,
       allPhrases,
       authorsWithBio,
       buildOptionsForArt,
       gameArts,
       gameAuthors,
+      gameFlags,
       gamePhraseologisms,
     ],
   );
@@ -218,7 +246,9 @@ export function ArtQuiz() {
       ? currentAuthor && currentBio
       : mode === "phraseologism"
         ? currentPhraseologism
-        : currentArt;
+        : mode === "flags"
+          ? currentFlag
+          : currentArt;
 
   if (phase === "start") {
     return (
@@ -312,12 +342,16 @@ export function ArtQuiz() {
         Вопрос {questionIndex + 1} из {QUESTION_COUNT}
       </p>
 
-      {mode === "author" && currentArt && (
+      {(mode === "author" && currentArt) || (mode === "flags" && currentFlag) ? (
         <div className="mb-6 overflow-hidden rounded-xl bg-stone-100 shadow-md">
           <div className="relative mx-auto aspect-[4/3] max-h-[420px] w-full">
             <Image
-              src={currentArt.imgUrl}
-              alt={currentArt.title}
+              src={mode === "flags" ? currentFlag!.imgUrl : currentArt!.imgUrl}
+              alt={
+                mode === "flags"
+                  ? `Флаг: ${currentFlag!.country}`
+                  : currentArt!.title
+              }
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 768px"
@@ -325,7 +359,7 @@ export function ArtQuiz() {
             />
           </div>
         </div>
-      )}
+      ) : null}
 
       {mode === "title" && currentArt && (
         <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
