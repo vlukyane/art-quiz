@@ -1,4 +1,5 @@
 import type { Art } from "@/data/arts";
+import type { Phraseologism } from "@/data/phraseologisms";
 
 export const QUESTION_COUNT = 30;
 
@@ -40,6 +41,24 @@ export function formatArtLabel(art: Art): string {
 
 function artKey(art: Art): string {
   return `${art.author}\0${art.title}`;
+}
+
+export function pickGamePhraseologisms(
+  items: Phraseologism[],
+  count: number,
+): Phraseologism[] {
+  return shuffle(items).slice(0, count);
+}
+
+export function buildPhraseologismOptions(
+  correctPhrase: string,
+  allPhrases: string[],
+): string[] {
+  const wrongPhrases = shuffle(
+    allPhrases.filter((phrase) => phrase !== correctPhrase),
+  ).slice(0, 2);
+
+  return shuffle([correctPhrase, ...wrongPhrases]);
 }
 
 export function buildArtLabelOptions(correctArt: Art, pool: Art[]): string[] {

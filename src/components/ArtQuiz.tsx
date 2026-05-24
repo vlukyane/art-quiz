@@ -5,16 +5,20 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { ARTS } from "@/data/arts";
 import { getAuthorBio, getAuthorsWithBio } from "@/data/author-bios";
+import { PHRASEOLOGISMS, type Phraseologism } from "@/data/phraseologisms";
 import { GameFinishedScreen } from "@/components/GameFinishedScreen";
 import { MODE_CONFIG, QUIZ_MODE_LIST, type QuizMode } from "@/lib/modes";
+import { maskPhraseologismMeaning } from "@/lib/phraseologism-mask";
 import {
   QUESTION_COUNT,
   buildArtLabelOptions,
   buildAuthorOptions,
+  buildPhraseologismOptions,
   formatArtLabel,
   getUniqueAuthors,
   pickGameArts,
   pickGameAuthors,
+  pickGamePhraseologisms,
 } from "@/lib/quiz";
 
 type GamePhase = "start" | "playing" | "finished";
@@ -44,11 +48,18 @@ function BioContent({ text }: { text: string }) {
 export function ArtQuiz() {
   const allAuthors = useMemo(() => getUniqueAuthors(ARTS), []);
   const authorsWithBio = useMemo(() => getAuthorsWithBio(), []);
+  const allPhrases = useMemo(
+    () => PHRASEOLOGISMS.map((item) => item.phrase),
+    [],
+  );
 
   const [phase, setPhase] = useState<GamePhase>("start");
   const [mode, setMode] = useState<QuizMode | null>(null);
   const [gameArts, setGameArts] = useState<typeof ARTS>([]);
   const [gameAuthors, setGameAuthors] = useState<string[]>([]);
+  const [gamePhraseologisms, setGamePhraseologisms] = useState<Phraseologism[]>(
+    [],
+  );
   const [questionIndex, setQuestionIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -57,17 +68,20 @@ export function ArtQuiz() {
 
   const currentArt = gameArts[questionIndex];
   const currentAuthor = gameAuthors[questionIndex];
+  const currentPhraseologism = gamePhraseologisms[questionIndex];
   const currentBio =
     mode === "bio" && currentAuthor ? getAuthorBio(currentAuthor) : null;
 
   const correctAnswer =
     mode === "bio"
       ? (currentAuthor ?? "")
-      : mode === "author"
-        ? (currentArt?.author ?? "")
-        : currentArt
-          ? formatArtLabel(currentArt)
-          : "";
+      : mode === "phraseologism"
+        ? (currentPhraseologism?.phrase ?? "")
+        : mode === "author"
+          ? (currentArt?.author ?? "")
+          : currentArt
+            ? formatArtLabel(currentArt)
+            : "";
 
   const buildOptionsForArt = useCallback(
     (art: (typeof ARTS)[number], quizMode: QuizMode) => {
@@ -91,17 +105,25 @@ export function ArtQuiz() {
         const authors = pickGameAuthors(authorsWithBio, QUESTION_COUNT);
         setGameAuthors(authors);
         setGameArts([]);
+        setGamePhraseologisms([]);
         setOptions(buildAuthorOptions(authors[0], authorsWithBio));
+      } else if (quizMode === "phraseologism") {
+        const items = pickGamePhraseologisms(PHRASEOLOGISMS, QUESTION_COUNT);
+        setGamePhraseologisms(items);
+        setGameArts([]);
+        setGameAuthors([]);
+        setOptions(buildPhraseologismOptions(items[0].phrase, allPhrases));
       } else {
         const arts = pickGameArts(ARTS, QUESTION_COUNT);
         setGameArts(arts);
         setGameAuthors([]);
+        setGamePhraseologisms([]);
         setOptions(buildOptionsForArt(arts[0], quizMode));
       }
 
       setPhase("playing");
     },
-    [authorsWithBio, buildOptionsForArt],
+    [allPhrases, authorsWithBio, buildOptionsForArt],
   );
 
   const restartGame = useCallback(() => {
@@ -113,6 +135,7 @@ export function ArtQuiz() {
     setMode(null);
     setGameArts([]);
     setGameAuthors([]);
+    setGamePhraseologisms([]);
     setQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -128,11 +151,25 @@ export function ArtQuiz() {
 
       if (quizMode === "bio") {
         setOptions(buildAuthorOptions(gameAuthors[index], authorsWithBio));
+      } else if (quizMode === "phraseologism") {
+        setOptions(
+          buildPhraseologismOptions(
+            gamePhraseologisms[index].phrase,
+            allPhrases,
+          ),
+        );
       } else {
         setOptions(buildOptionsForArt(gameArts[index], quizMode));
       }
     },
-    [authorsWithBio, buildOptionsForArt, gameArts, gameAuthors],
+    [
+      allPhrases,
+      authorsWithBio,
+      buildOptionsForArt,
+      gameArts,
+      gameAuthors,
+      gamePhraseologisms,
+    ],
   );
 
   const handleAnswer = () => {
@@ -177,7 +214,11 @@ export function ArtQuiz() {
   };
 
   const isPlayingReady =
-    mode === "bio" ? currentAuthor && currentBio : currentArt;
+    mode === "bio"
+      ? currentAuthor && currentBio
+      : mode === "phraseologism"
+        ? currentPhraseologism
+        : currentArt;
 
   if (phase === "start") {
     return (
@@ -185,7 +226,7 @@ export function ArtQuiz() {
         <div className="text-center">
           <h1 className="text-3xl font-bold text-stone-900">Квиз: знаменитые картины</h1>
           <p className="mt-3 max-w-lg text-stone-600">
-            Выберите режим игры — 30 случайных вопросов из 100 шедевров.
+            Выберите режим — в каждом 30 случайных вопросов без повторов за игру.
           </p>
         </div>
         <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -297,6 +338,17 @@ export function ArtQuiz() {
       {mode === "bio" && currentBio && (
         <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
           <BioContent text={currentBio} />
+        </div>
+      )}
+
+      {mode === "phraseologism" && currentPhraseologism && (
+        <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-base leading-relaxed text-stone-700">
+            {maskPhraseologismMeaning(
+              currentPhraseologism.phrase,
+              currentPhraseologism.meaning,
+            )}
+          </p>
         </div>
       )}
 

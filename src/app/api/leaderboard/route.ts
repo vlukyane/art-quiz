@@ -8,11 +8,10 @@ import {
   scoreQualifiesForTop,
   toLeaderboardEntry,
 } from "@/lib/leaderboard";
-
-const MODES: QuizMode[] = ["author", "title", "bio"];
+import { QUIZ_MODE_LIST } from "@/lib/modes";
 
 function isValidMode(mode: string | null): mode is QuizMode {
-  return mode !== null && MODES.includes(mode as QuizMode);
+  return mode !== null && QUIZ_MODE_LIST.includes(mode as QuizMode);
 }
 
 async function getCollection() {

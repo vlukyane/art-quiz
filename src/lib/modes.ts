@@ -2,7 +2,12 @@ import type { QuizMode } from "@/lib/leaderboard";
 
 export type { QuizMode };
 
-export const QUIZ_MODE_LIST: QuizMode[] = ["author", "title", "bio"];
+export const QUIZ_MODE_LIST: QuizMode[] = [
+  "author",
+  "title",
+  "bio",
+  "phraseologism",
+];
 
 export const MODE_CONFIG: Record<
   QuizMode,
@@ -31,5 +36,11 @@ export const MODE_CONFIG: Record<
     description:
       "Показывается биография — угадайте автора из трёх вариантов. 30 художников без повторов за игру.",
     questionLabel: "Кто этот художник?",
+  },
+  phraseologism: {
+    title: "Угадай фразеологизм",
+    description:
+      "Показывается значение выражения — выберите фразеологизм из трёх вариантов. 30 вопросов без повторов.",
+    questionLabel: "Какое это выражение?",
   },
 };
